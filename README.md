@@ -16,5 +16,5 @@ Download, install and setup Android Studio: https://developer.android.com/sdk/in
 
 That should be all you need to open this project and build it. If you find this not to be true, please create an issue and will look into it.
 
-If you'd rather use Eclipse or Sublime+CLI, good luck, you're on your own for the time being.
+If you'd rather use Eclipse or Sublime+CLI, good luck, you're on your own for the time being :).
 
