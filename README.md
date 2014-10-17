@@ -6,11 +6,11 @@ Currently, Giskard is an R&D project aiming at getting UAVs to fly autonomously 
 For our first try, we're playing around with an Android app in the hope that we can attach it to the drone and let it go.
 
 
-= Dependencies 
+# Dependencies 
 
 Giskard uses the javadrone project, check it out at: https://code.google.com/p/javadrone/
 
-= Development environment
+# Development environment
 
 Download, install and setup Android Studio: https://developer.android.com/sdk/installing/studio.html
 
