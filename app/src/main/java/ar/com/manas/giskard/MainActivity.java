@@ -37,14 +37,11 @@ public class MainActivity extends Activity implements DroneVideoListener, OnShar
     
     ImageView display;
     TextView state;
-    TextView joystick_state;
     Button connectButton;
     Button btnTakeOffOrLand;
     
     private static final String TAG = "AR.Drone";
-    
-    SharedPreferences prefs;
-    
+
     boolean isVisible = true; 
 
     private Builder turnOnWiFiDialog;
@@ -61,7 +58,6 @@ public class MainActivity extends Activity implements DroneVideoListener, OnShar
         java.lang.System.setProperty("java.net.preferIPv6Addresses", "false");
 
         state = (TextView) findViewById(R.id.state);
-        joystick_state = (TextView) findViewById(R.id.joystick_state);
         connectButton = (Button) findViewById(R.id.connect);
         
         btnTakeOffOrLand = (Button) findViewById(R.id.takeOffOrland);
@@ -81,11 +77,10 @@ public class MainActivity extends Activity implements DroneVideoListener, OnShar
         public void onClick(DialogInterface dialog, int id) {
             dialog.dismiss();
         }});
-        
-        final Button btnConnect = (Button) findViewById(R.id.connect);
-        btnConnect.setOnClickListener(new View.OnClickListener() {
+
+        connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                startARDroneConnection(btnConnect);
+                startARDroneConnection(connectButton);
             }
         });
     }
