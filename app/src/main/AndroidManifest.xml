@@ -3,9 +3,9 @@
     package="ar.com.manas.giskard" >
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"></uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission
-        android:name="android.permission.ACCESS_NETWORK_STATE"></uses-permission>
+        android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <uses-feature android:name="android.hardware.usb.host" />
 
@@ -23,12 +23,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".DroneControlActivity"
-            android:label="@string/app_name"
-            android:theme="@style/FullscreenTheme" >
         </activity>
     </application>
 

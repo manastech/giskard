@@ -45,8 +45,10 @@ public class ControllerThread extends Thread {
 
         try
         {
-            while(!done || commandQueue.isEmpty())
+            while(!done || commandQueue == null || commandQueue.isEmpty())
             {
+                if (commandQueue == null) break;
+
                 switch (commandQueue.poll()) {
                     case TAKE_OFF:
                         drone.takeOff();

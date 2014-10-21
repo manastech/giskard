@@ -6,6 +6,7 @@ import java.text.DecimalFormat;
 
 import com.codeminders.ardrone.ARDrone;
 import com.codeminders.ardrone.ARDrone.State;
+import com.codeminders.ardrone.DroneStatusChangeListener;
 import com.codeminders.ardrone.DroneVideoListener;
 
 import android.app.Activity;
@@ -241,6 +242,7 @@ private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
     protected Boolean doInBackground(ARDrone... drones) {
         ARDrone drone = drones[0];
         try {
+            //foo
             drone = new ARDrone(InetAddress.getByAddress(DEFAULT_DRONE_IP), 10000, 60000);
             MainActivity.drone = drone;
             drone.connect();
@@ -251,7 +253,7 @@ private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
             drone.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY);
             drone.setCombinedYawMode(true);
             return true;
-        } catch (Exception e) {
+        } catch (IOException e) {
             Log.e(TAG, "Failed to connect to drone", e);
             try {
                 drone.clearEmergencySignal();
