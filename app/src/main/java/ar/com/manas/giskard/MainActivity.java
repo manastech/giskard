@@ -8,10 +8,7 @@ import com.codeminders.ardrone.ARDrone;
 import com.codeminders.ardrone.ARDrone.State;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
@@ -23,10 +20,6 @@ import android.widget.Button;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
-    
-    private static final long CONNECTION_TIMEOUT = 10000;
-
-    final static byte[] DEFAULT_DRONE_IP  = { (byte) 192, (byte) 168, (byte) 1, (byte) 1 };
     static ARDrone drone;
     
     TextView state;
@@ -35,25 +28,19 @@ public class MainActivity extends Activity {
     
     private static final String TAG = "AR.Drone";
 
-    boolean isVisible = true; 
-
-    private Builder turnOnWiFiDialog;
-
     ControllerThread ctrThread;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-       
         setContentView(R.layout.activity_main);
 
-        java.lang.System.setProperty("java.net.preferIPv4Stack", "true");
-        java.lang.System.setProperty("java.net.preferIPv6Addresses", "false");
+        setJavaSystemProperties();
+        bindControls();
+        setupButtons();
+    }
 
-        state = (TextView) findViewById(R.id.state);
-        connectButton = (Button) findViewById(R.id.connect);
-        
-        btnTakeOffOrLand = (Button) findViewById(R.id.takeOffOrland);
+    private void setupButtons() {
         btnTakeOffOrLand.setEnabled(false);
 
         btnTakeOffOrLand.setOnTouchListener(new View.OnTouchListener() {
@@ -63,13 +50,6 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
-        
-        turnOnWiFiDialog = new AlertDialog.Builder(this);
-        turnOnWiFiDialog.setMessage("Please turn on WiFi and connect to AR.Drone wireless accsess point");
-        turnOnWiFiDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-        public void onClick(DialogInterface dialog, int id) {
-            dialog.dismiss();
-        }});
 
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -77,7 +57,19 @@ public class MainActivity extends Activity {
             }
         });
     }
-    
+
+    private void bindControls() {
+        state = (TextView) findViewById(R.id.state);
+        connectButton = (Button) findViewById(R.id.connect);
+
+        btnTakeOffOrLand = (Button) findViewById(R.id.takeOffOrland);
+    }
+
+    private void setJavaSystemProperties() {
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        System.setProperty("java.net.preferIPv6Addresses", "false");
+    }
+
     private void startARDroneConnection(final Button btnConnect) {
         WifiManager connManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         
@@ -86,8 +78,6 @@ public class MainActivity extends Activity {
             state.setText("Connecting..." +  connManager.getConnectionInfo().getSSID());
             btnConnect.setEnabled(false);
             (new DroneStarter()).execute(MainActivity.drone); 
-        } else {
-            turnOnWiFiDialog.show();
         }
     }       
     
@@ -149,7 +139,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        isVisible = true;
         if (null != drone) {
             drone.resumeNavData();
             drone.resumeVideo();
@@ -159,12 +148,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        isVisible = false;
         if (null != drone) {
             drone.pauseNavData();
             drone.pauseVideo();
         }
-        
     }
 
     @Override
@@ -192,13 +179,12 @@ private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
     protected Boolean doInBackground(ARDrone... drones) {
         ARDrone drone = drones[0];
         try {
-            //foo
-            drone = new ARDrone(InetAddress.getByAddress(DEFAULT_DRONE_IP), 10000, 60000);
+            drone = new ARDrone(InetAddress.getByAddress(Giskard.DEFAULT_DRONE_IP), 10000, 60000);
             MainActivity.drone = drone;
             drone.connect();
             drone.clearEmergencySignal();
             drone.trim();
-            drone.waitForReady(CONNECTION_TIMEOUT);
+            drone.waitForReady(Giskard.CONNECTION_TIMEOUT);
             drone.playLED(1, 10, 4);
             drone.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY);
             drone.setCombinedYawMode(true);
