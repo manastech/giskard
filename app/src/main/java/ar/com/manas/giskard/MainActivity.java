@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.text.DecimalFormat;
 
 import com.codeminders.ardrone.ARDrone;
-import com.codeminders.ardrone.ARDrone.State;
 
 import android.app.Activity;
 import android.content.Context;
@@ -14,7 +13,6 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -25,6 +23,7 @@ public class MainActivity extends Activity {
     TextView state;
     Button connectButton;
     Button btnTakeOffOrLand;
+    Button resetWatchdog;
     
     private static final String TAG = "AR.Drone";
 
@@ -41,13 +40,10 @@ public class MainActivity extends Activity {
     }
 
     private void setupButtons() {
-        btnTakeOffOrLand.setEnabled(false);
-
-        btnTakeOffOrLand.setOnTouchListener(new View.OnTouchListener() {
+        btnTakeOffOrLand.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
+            public void onClick(View view) {
                 ctrThread.start();
-                return false;
             }
         });
 
@@ -63,6 +59,8 @@ public class MainActivity extends Activity {
         connectButton = (Button) findViewById(R.id.connect);
 
         btnTakeOffOrLand = (Button) findViewById(R.id.takeOffOrland);
+
+        resetWatchdog = (Button) findViewById(R.id.resetWatchdog);
     }
 
     private void setJavaSystemProperties() {
@@ -76,63 +74,23 @@ public class MainActivity extends Activity {
         if (connManager.isWifiEnabled()) {
             state.setTextColor(Color.RED);
             state.setText("Connecting..." +  connManager.getConnectionInfo().getSSID());
-            btnConnect.setEnabled(false);
             (new DroneStarter()).execute(MainActivity.drone); 
         }
     }       
     
     private void droneOnConnected() {
+        Log.d(TAG, "DRONE CONNECTED");
+
         ctrThread = new ControllerThread(drone);
         ctrThread.setName("Controll Thread");
-        loadControllerDeadZone();
 
         state.setTextColor(Color.GREEN);
         state.setText("Connected");
-        loadDroneSettingsFromPref();
-        connectButton.setEnabled(false);
+
+        setDefaultSettings();
 
         if (null != ctrThread) {
             ctrThread.setDrone(drone);
-        }
-        
-        if (btnTakeOffOrLand != null) {
-            btnTakeOffOrLand.setVisibility(View.VISIBLE);
-            btnTakeOffOrLand.setClickable(true);
-            btnTakeOffOrLand.setEnabled(true);
-            btnTakeOffOrLand.setOnClickListener(new View.OnClickListener()  {
-                public void onClick(View v) {
-                    
-                    if (null == drone || drone.getState() == State.DISCONNECTED) {
-                        state.setText("Disconnected");
-                        state.setTextColor(Color.RED);
-                        connectButton.setEnabled(true);
-                        return;
-                    }
-                    
-                    if (btnTakeOffOrLand.getText().equals(getString(R.string.btn_land))) {
-                        try
-                        {
-                            drone.land();
-                        } catch(Throwable e)
-                        {
-                            Log.e(TAG, "Faliled to execute take off command" , e);
-                        }
-                        
-                        btnTakeOffOrLand.setText(R.string.btn_take_off);
-                    } else  {                        
-                        try
-                        {
-                            drone.clearEmergencySignal();
-                            drone.trim(); 
-                            drone.takeOff();
-                        } catch(Throwable e)
-                        {
-                            Log.e(TAG, "Faliled to execute take off command" , e);
-                        }
-                        btnTakeOffOrLand.setText(R.string.btn_land);
-                    }
-                }
-            });
         }
     }
     
@@ -162,7 +120,7 @@ public class MainActivity extends Activity {
 
     private void releaseResources() {
         if (null != ctrThread && ctrThread.isAlive()) { 
-            ctrThread.finish();
+            //handle this
         }
         if (null != drone) {
             try {
@@ -222,43 +180,11 @@ private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
     public static String DRONE_MAX_ALTITUDE = "control:altitude_max";
     DecimalFormat twoDForm = new DecimalFormat("#.##");
 
-    private void loadDroneSettingsFromPref() {
-            droneLoadMaxAltitude();
-            droneLoadMaxAngle();
-            droneLoadMaxVerticalSpeed();
-            drobeLoadMaxRotationSpeed();
-            loadControllerDeadZone();
-    }
-            
-    private void drobeLoadMaxRotationSpeed() {
-        //if (null != drone && prefs.contains(PREF_MAX_ROTATION_SPEED)) {
-            setDroneParam(DRONE_MAX_YAW_PARAM_NAME, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'));
-        //}
-    }
-
-    private void loadControllerDeadZone() {
-        //if (null != ctrThread && prefs.contains(PREF_MAX_CONTROLLER_DEDZONE)) {
-            //ctrThread.setControlThreshhold(prefs.getFloat(PREF_MAX_ROTATION_SPEED, 30f) / 100f);
-        //}
-        
-    }
-
-    private void droneLoadMaxVerticalSpeed() {
-        //if (null != drone && prefs.contains(PREF_MAX_VERICAL_SPEED)) {
-            setDroneParam(DRONE_MAX_VERT_SPEED_PARAM_NAME, String.valueOf(Math.round(1f * 1000)));
-        //}
-    }
-
-    private void droneLoadMaxAngle() {
-        //if (null != drone && prefs.contains(PREF_MAX_ANGLE)) {
-            setDroneParam(DRONE_MAX_EULA_ANGLE, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'));
-        //}
-    }
-
-    private void droneLoadMaxAltitude() {
-        //if (null != drone && prefs.contains(PREF_MAX_ALTITUDE)) {
-            setDroneParam(DRONE_MAX_ALTITUDE, String.valueOf(Math.round(1.5f * 1000)));
-        //}
+    private void setDefaultSettings() {
+        setDroneParam(DRONE_MAX_ALTITUDE, String.valueOf(Math.round(1.5f * 1000)));
+        setDroneParam(DRONE_MAX_EULA_ANGLE, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'));
+        setDroneParam(DRONE_MAX_VERT_SPEED_PARAM_NAME, String.valueOf(Math.round(1f * 1000)));
+        setDroneParam(DRONE_MAX_YAW_PARAM_NAME, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'));
     }
     
     private void setDroneParam(final String name, final String value) {

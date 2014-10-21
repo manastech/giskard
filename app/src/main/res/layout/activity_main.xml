@@ -37,19 +37,18 @@
         android:text="@string/btn_take_off"
         android:visibility="visible" />
     
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:baselineAligned="false"
-        android:gravity="bottom"
-        android:weightSum="1.0">
-       
-	    <Button
-	        android:id="@+id/connect"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:layout_weight=".5"
-	        android:text="@string/btn_connect" />
 
-     </LinearLayout>
-</LinearLayout>
+    <Button
+        android:id="@+id/connect"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_connect" />
+
+    <Button
+        android:id="@+id/resetWatchdog"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="Reset Watchdog" />
+
+
+    </LinearLayout>
