@@ -41,48 +41,7 @@ public class MainActivity extends Activity {
         btnTakeOffOrLand.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //ctrThread.start();
-
-                new Thread(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        try
-                        {
-                            Log.e(TAG, "CONTROLLER THREAD Taking off...");
-                            drone.takeOff();
-
-                            try
-                            {
-                                Log.e(TAG, "CONTROLLER THREAD Going to sleep for 5 seconds...");
-                                Thread.sleep(10000);
-                            }
-                            catch(InterruptedException e)
-                            {
-                                // Ignore
-                            }
-
-                            Log.e(TAG, "CONTROLLER THREAD Landing...");
-                            drone.land();
-
-                            try {
-                                Thread.sleep(2000);
-                            } catch (InterruptedException ignored) {
-                            }
-                        } catch (IOException e) {
-                            Log.e(TAG, "Failed read data from controller" , e);
-                        }
-                        finally
-                        {
-                            try {
-                                Log.e(TAG, "Disconnecting from drone");
-                                drone.disconnect();
-                            } catch (IOException e) {
-                                Log.e(TAG, "Failed to disconnect from drone", e);
-                            }
-                        }
-                    }
-                }).start();
+            new Thread(new TakeOffHoverAndLand(drone)).start();
             }
         });
 
