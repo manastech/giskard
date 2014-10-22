@@ -1,7 +1,6 @@
 package ar.com.manas.giskard;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.text.DecimalFormat;
 
 import com.codeminders.ardrone.ARDrone;
@@ -10,7 +9,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -72,7 +70,7 @@ public class MainActivity extends Activity {
         if (connManager.isWifiEnabled()) {
             state.setTextColor(Color.RED);
             state.setText("Connecting..." +  connManager.getConnectionInfo().getSSID());
-            (new DroneStarter()).execute(MainActivity.drone); 
+            (new DroneStarter(this)).execute(MainActivity.drone);
         }
     }       
     
@@ -82,7 +80,7 @@ public class MainActivity extends Activity {
         state.setTextColor(Color.GREEN);
         state.setText("Connected");
 
-        setDefaultSettings();
+        Giskard.setDefaultSettings(drone);
     }
     
     @Override
@@ -119,39 +117,7 @@ public class MainActivity extends Activity {
         }
     }
 
-private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
-    
-    @Override
-    protected Boolean doInBackground(ARDrone... drones) {
-        ARDrone drone = drones[0];
-        try {
-            drone = new ARDrone(InetAddress.getByAddress(Giskard.DEFAULT_DRONE_IP), 10000, 60000);
-            MainActivity.drone = drone;
-            drone.connect();
-            drone.clearEmergencySignal();
-            drone.trim();
-            drone.waitForReady(Giskard.CONNECTION_TIMEOUT);
-            drone.playLED(1, 10, 4);
-            drone.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY);
-            drone.setCombinedYawMode(true);
-            return true;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to connect to drone", e);
-            try {
-                drone.clearEmergencySignal();
-                drone.clearImageListeners();
-                drone.clearNavDataListeners();
-                drone.clearStatusChangeListeners();
-                drone.disconnect();
-            } catch (Exception ex) {
-                Log.e(TAG, "Failed to clear drone state", ex);
-            }
-          
-        }
-        return false;
-    }
-
-    protected void onPostExecute(Boolean success) {
+    public void onDroneStarterFinished(Boolean success) {
         if (success) {
             droneOnConnected();
         } else {
@@ -160,34 +126,4 @@ private class DroneStarter extends AsyncTask<ARDrone, Integer, Boolean> {
             connectButton.setEnabled(true);
         }
     }
-   }
-
-    public static String DRONE_MAX_YAW_PARAM_NAME = "control:control_yaw";
-    public static String DRONE_MAX_VERT_SPEED_PARAM_NAME = "control:control_vz_max";
-    public static String DRONE_MAX_EULA_ANGLE = "control:euler_angle_max";
-    public static String DRONE_MAX_ALTITUDE = "control:altitude_max";
-    DecimalFormat twoDForm = new DecimalFormat("#.##");
-
-    private void setDefaultSettings() {
-        setDroneParam(DRONE_MAX_ALTITUDE, String.valueOf(Math.round(1.5f * 1000)));
-        setDroneParam(DRONE_MAX_EULA_ANGLE, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'));
-        setDroneParam(DRONE_MAX_VERT_SPEED_PARAM_NAME, String.valueOf(Math.round(1f * 1000)));
-        setDroneParam(DRONE_MAX_YAW_PARAM_NAME, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'));
-    }
-    
-    private void setDroneParam(final String name, final String value) {
-     new Thread(new Runnable() {  
-            @Override
-            public void run() {
-                try {
-                    drone.setConfigOption(name, value);
-                    Log.d(TAG, "Drone parameter (" + name + ") is SET to value: " + value);
-                } catch (IOException ex) {
-                    Log.e(TAG, "Failed to set drone parameter (" + name + ") to value: " + value , ex);
-                }
-                
-            }
-        }).start();
-    }
-
 }
