@@ -48,7 +48,7 @@ public class Giskard {
 
         if (wifi.isWifiEnabled()) {
             Log.e("Giskard", "WIFI enabled, running DroneStarter routine");
-           (new DroneStarter()).execute(this);
+           //(new DroneStarter()).execute(this);
             Log.e("Giskard", "Routine enqueued");
         } else {
             Log.e("Giskard", "WIFI disabled, will not connect");

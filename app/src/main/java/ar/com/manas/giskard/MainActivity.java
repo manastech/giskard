@@ -27,8 +27,6 @@ public class MainActivity extends Activity {
     
     private static final String TAG = "AR.Drone";
 
-    ControllerThread ctrThread;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,13 +41,54 @@ public class MainActivity extends Activity {
         btnTakeOffOrLand.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ctrThread.start();
+                //ctrThread.start();
+
+                new Thread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        try
+                        {
+                            Log.e(TAG, "CONTROLLER THREAD Taking off...");
+                            drone.takeOff();
+
+                            try
+                            {
+                                Log.e(TAG, "CONTROLLER THREAD Going to sleep for 5 seconds...");
+                                Thread.sleep(10000);
+                            }
+                            catch(InterruptedException e)
+                            {
+                                // Ignore
+                            }
+
+                            Log.e(TAG, "CONTROLLER THREAD Landing...");
+                            drone.land();
+
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException ignored) {
+                            }
+                        } catch (IOException e) {
+                            Log.e(TAG, "Failed read data from controller" , e);
+                        }
+                        finally
+                        {
+                            try {
+                                Log.e(TAG, "Disconnecting from drone");
+                                drone.disconnect();
+                            } catch (IOException e) {
+                                Log.e(TAG, "Failed to disconnect from drone", e);
+                            }
+                        }
+                    }
+                }).start();
             }
         });
 
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                startARDroneConnection(connectButton);
+                startARDroneConnection();
             }
         });
     }
@@ -68,7 +107,7 @@ public class MainActivity extends Activity {
         System.setProperty("java.net.preferIPv6Addresses", "false");
     }
 
-    private void startARDroneConnection(final Button btnConnect) {
+    private void startARDroneConnection() {
         WifiManager connManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         
         if (connManager.isWifiEnabled()) {
@@ -81,17 +120,10 @@ public class MainActivity extends Activity {
     private void droneOnConnected() {
         Log.d(TAG, "DRONE CONNECTED");
 
-        ctrThread = new ControllerThread(drone);
-        ctrThread.setName("Controll Thread");
-
         state.setTextColor(Color.GREEN);
         state.setText("Connected");
 
         setDefaultSettings();
-
-        if (null != ctrThread) {
-            ctrThread.setDrone(drone);
-        }
     }
     
     @Override
@@ -119,9 +151,6 @@ public class MainActivity extends Activity {
     }
 
     private void releaseResources() {
-        if (null != ctrThread && ctrThread.isAlive()) { 
-            //handle this
-        }
         if (null != drone) {
             try {
                 drone.disconnect();
