@@ -2,6 +2,8 @@ package ar.com.manas.giskard
 
 import akka.actor.{Props, ActorLogging, ActorRef}
 import macroid.akkafragments.FragmentActor
+import macroid.Logging._
+import macroid.AutoLogTag
 
 object RacketActor {
   case object Ball
@@ -15,7 +17,7 @@ object RacketActor {
 }
 
 /** The actor that handles the ball */
-class RacketActor extends FragmentActor[RacketFragment] with ActorLogging {
+class RacketActor extends FragmentActor[RacketFragment] with ActorLogging with AutoLogTag {
   import RacketActor._
   import FragmentActor._
 
@@ -26,7 +28,7 @@ class RacketActor extends FragmentActor[RacketFragment] with ActorLogging {
   def receive = receiveUi andThen {
     case Ball ⇒
       // boast
-      log.debug("got the ball!")
+      logE"got the ball!"()
       // save the opponent reference
       lastOpponent = Some(sender)
       // notify the UI
@@ -34,7 +36,7 @@ class RacketActor extends FragmentActor[RacketFragment] with ActorLogging {
 
     case Smash ⇒
       // boast
-      log.debug("smash!!!")
+      logE"smash!"()
       // send the ball to the opponent
       lastOpponent.foreach(_ ! Ball)
       // forget who it was
