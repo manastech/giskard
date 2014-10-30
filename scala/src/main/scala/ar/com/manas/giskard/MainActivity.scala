@@ -4,10 +4,14 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.view.ViewGroup.LayoutParams._
 import android.support.v4.app.FragmentActivity
+import android.util.Log
 
 import macroid._
 import macroid.FullDsl._
 import macroid.akkafragments.AkkaActivity
+
+import akka.actor.Props
+import akka.event.Logging._
 
 class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with AkkaActivity {
 
@@ -41,7 +45,9 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
 
     setContentView(getUi(view))
 
-    drone ! Drone.Init
+    Log.e("MainActivity", "MainActivity onCreate")
+
+    drone ! Drone.Init    
   }
 
   override def onStart() = {
