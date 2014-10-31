@@ -18,7 +18,6 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
   val actorSystemName = "giskard"  
 
   lazy val drone = actorSystem.actorOf(Drone.props, "drone")
-  lazy val network = actorSystem.actorOf(NetworkManager.props, "network")
 
   lazy val ping = actorSystem.actorOf(RacketActor.props, "ping")
   lazy val pong = actorSystem.actorOf(RacketActor.props, "pong")
@@ -30,7 +29,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
     super.onCreate(savedInstanceState)
 
     // initialize the actors
-    (drone, network, ping, pong)
+    (drone, ping, pong)
 
     // layout params
     val lps = lp[LinearLayout](MATCH_PARENT, WRAP_CONTENT, 1.0f)
@@ -40,7 +39,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
       // we pass a name for the actor, and id+tag for the fragment
       f[RacketFragment].pass("name" → "ping").framed(Id.ping, Tag.ping) <~ lps,
       f[RacketFragment].pass("name" → "pong").framed(Id.pong, Tag.pong) <~ lps,
-      f[NetworkManagerFragment].pass("name" → "network").framed(Id.network, Tag.network) <~ lps
+      f[NetworkManagerFragment].pass("name" → "drone/network").framed(Id.network, Tag.network) <~ lps
     ) <~ vertical
 
     setContentView(getUi(view))

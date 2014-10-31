@@ -13,6 +13,9 @@ import macroid.Logging._
 import macroid.AutoLogTag
 
 import com.codeminders.ardrone.ARDrone
+import com.codeminders.ardrone.DroneStatusChangeListener
+import com.codeminders.ardrone.NavDataListener
+import com.codeminders.ardrone.NavData
 
 object Drone {
   case object Init
@@ -42,6 +45,10 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   import DroneTimeouts._
   import DroneParams._
 
+  implicit def readyWrapper(func: () => Unit) = new DroneStatusChangeListener { def ready() = func() }   
+
+  implicit def navDataReceivedWrapper(func: (NavData) => Unit) = new NavDataListener { def navDataReceived(nd: NavData) = func(nd) }
+    
   var drone: Option[ARDrone] = None
 
   val network = context.actorOf(Props[NetworkManager], name = "network")
@@ -54,14 +61,7 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
       val addr = address.toString()
       logE"Engage address $addr"()
 
-      engageDrone(address)
-
-      drone match {
-        case Some(d) =>
-          d.takeOff
-          context.system.scheduler.schedule(Duration.Zero, 5 seconds, self, Land)
-        case None => logE"Lost connection with drone"
-      }
+      engageDrone(address)      
     case Land =>
       drone match {
         case Some(d) => d.land
@@ -69,24 +69,47 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
       }
   }
 
-  def engageDrone(address: Array[Byte]) = {
+  def prepareAndTakeOff: () => Unit = () => {
+    logE"Drone Status is now READY"()
+
+    drone match {
+      case Some(d) =>
+        logE"Trimming..."
+        d.trim
+        logE"Playing LED sequence..."
+        d.playLED(1, 10, 4)
+        logE"Selecting video channel..."
+        d.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY)      
+        logE"Setting combined Yaw Mode..."
+        d.setCombinedYawMode(true)
+
+        logE"Alright, taking off!"
+        d.takeOff
+        context.system.scheduler.schedule(Duration.Zero, 5 seconds, self, Land)
+      case None => logE"Lost connection with drone"
+    }
+  }
+
+  def engageDrone(address: Array[Byte]) = {    
     try {
-      val actualDrone = new ARDrone(InetAddress.getByAddress(address), navDataTimeout, videoTimeout)
+      drone = Some(new ARDrone(InetAddress.getByAddress(address), navDataTimeout, videoTimeout))
 
-      drone = Some(actualDrone)
+      drone match {
+        case Some(d) =>
+          d.connect
+          d.clearEmergencySignal
 
-      actualDrone.connect
-      actualDrone.clearEmergencySignal
-      actualDrone.trim
-      actualDrone.waitForReady(connectionTimeout)
-      actualDrone.playLED(1, 10, 4)
-      actualDrone.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY)      
-      actualDrone.setCombinedYawMode(true)
+          d.addStatusChangeListener(prepareAndTakeOff)
+        case None =>
+      }
 
       setupDrone
     } catch {    
       case ioe: IOException =>
-        logE"Failed to connect to drone"()
+        val msg = ioe.getMessage
+        val cause = ioe.getCause.toString() 
+        logE"Failed to connect to drone: $msg"()
+        releaseDrone
       case _: Throwable =>  
         try {
           releaseDrone
