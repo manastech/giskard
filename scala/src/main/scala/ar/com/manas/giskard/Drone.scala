@@ -7,7 +7,7 @@ import java.text.DecimalFormat
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import akka.actor.{Actor, Props, ActorLogging, ActorRef}
+import akka.actor.{Actor, Props, ActorLogging, ActorRef, Cancellable}
 
 import macroid.Logging._
 import macroid.AutoLogTag
@@ -19,8 +19,12 @@ import com.codeminders.ardrone.NavData
 
 object Drone {
   case object Init
+  case object TakeOff
   case object Land
+  case object PollState
+  case object Disconnect
   case class Engage(address: Array[Byte])
+
 
   def props = Props(new Drone)
 }
@@ -50,71 +54,117 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   implicit def navDataReceivedWrapper(func: (NavData) => Unit) = new NavDataListener { def navDataReceived(nd: NavData) = func(nd) }
     
   var drone: Option[ARDrone] = None
-
-  val network = context.actorOf(Props[NetworkManager], name = "network")
+  var landCommand: Option[Cancellable] = None
 
   def receive = {
     case Init =>
       logE"Init drone"()
-      network ! NetworkManager.Connect
+      self ! Engage(Array[Byte](192.toByte, 168.toByte, 1, 1))
     case Engage(address) => 
       val addr = address.toString()
       logE"Engage address $addr"()
-
-      engageDrone(address)      
+      engageDrone(address)     
+    case TakeOff =>
+      logE"Received takeoff request"()
+      drone match {
+        case Some(d) => 
+          d.takeOff
+          context.system.scheduler.scheduleOnce(10 seconds, self, Land)
+        case None => logE"Lost connection with drone"()
+      }      
     case Land =>
       drone match {
-        case Some(d) => d.land
-        case None => logE"Lost connection with drone"
+        case Some(d) => 
+          logE"Landing..."()
+          d.land
+        case None => logE"Lost connection with drone"()
       }
+    case PollState =>
+      drone match {
+        case Some(d) =>
+          val state = d.getState
+          logE"Current drone state is: $state"()
+        case None => logE"Lost connection with drone"()
+      }
+    case Disconnect =>
+      drone match {
+        case Some(d) => 
+          logE"Received disconnection request"
+          releaseDrone
+        case None => logE"Lost connection with drone"()
+      }
+        
   }
 
-  def prepareAndTakeOff: () => Unit = () => {
+  def prepare: () => Unit = () => {
     logE"Drone Status is now READY"()
 
     drone match {
       case Some(d) =>
-        logE"Trimming..."
-        d.trim
-        logE"Playing LED sequence..."
-        d.playLED(1, 10, 4)
-        logE"Selecting video channel..."
-        d.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY)      
-        logE"Setting combined Yaw Mode..."
-        d.setCombinedYawMode(true)
-
-        logE"Alright, taking off!"
-        d.takeOff
-        context.system.scheduler.schedule(Duration.Zero, 5 seconds, self, Land)
-      case None => logE"Lost connection with drone"
+        try {
+          logE"Setting combined Yaw Mode..."()
+          d.setCombinedYawMode(true)
+          logE"Trimming..."()
+          d.trim          
+        } catch {
+          case ioe: IOException => d.changeToErrorState(ioe)
+        }        
+      case None => logE"Lost connection with drone"()
     }
   }
 
-  def engageDrone(address: Array[Byte]) = {    
+  def engageDrone(address: Array[Byte]) : Unit = {    
+    logE"Trying to engage drone"()
     try {
-      drone = Some(new ARDrone(InetAddress.getByAddress(address), navDataTimeout, videoTimeout))
-
+      logE"Matching over drone"()
       drone match {
-        case Some(d) =>
+        case Some(d) =>          
+          logE"Getting drone state"()
+          val droneState = d.getState          
+          logE"Drone state is: $droneState"()
+
+          if (droneState != ARDrone.State.DISCONNECTED) {
+            logE"Disconnecting..."()
+            d.disconnect  
+          }
+          
+          logE"Clearing status change listeners"()
+          d.clearStatusChangeListeners
+          logE"Adding method prepare as new status change listener"()
+          d.addStatusChangeListener(prepare)
+
+          logE"Connecting..."()
           d.connect
+          logE"Clearing emergency signal"()
           d.clearEmergencySignal
-
-          d.addStatusChangeListener(prepareAndTakeOff)
+          
+          logE"Setting up drone"()
+          setupDrone
         case None =>
+          logE"Creating ARDrone instance"()
+          drone = Some(new ARDrone(InetAddress.getByAddress(address), navDataTimeout, videoTimeout))
+          self ! Engage(address)
       }
-
-      setupDrone
     } catch {    
       case ioe: IOException =>
         val msg = ioe.getMessage
         val cause = ioe.getCause.toString() 
         logE"Failed to connect to drone: $msg"()
         releaseDrone
-      case _: Throwable =>  
+      case e: Exception =>
+        e.printStackTrace
+        val msg = e.getMessage
+        logE"Failed to clear drone state: $msg"()
+        releaseDrone        
+      case t: Throwable =>  
         try {
+          logE"Trying to release drone"()
           releaseDrone
         } catch {
-          case _: Throwable => logE"Failed to clear drone state"()
+          case t: Throwable => {
+            val kindOfThrowable = t.getClass
+            logE"Failed to clear drone state. Kind of throwable: $kindOfThrowable"()
+          }
         }        
     }    
   }
@@ -122,11 +172,16 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   def releaseDrone = {
     drone match {
       case Some(d) =>
-        d.clearEmergencySignal()
-        d.clearImageListeners()
-        d.clearNavDataListeners()
-        d.clearStatusChangeListeners()
-        d.disconnect()  
+        logE"releaseDrone: Clearing emergency signal"()
+        d.clearEmergencySignal
+        logE"releaseDrone: Clearing image listeners"()
+        d.clearImageListeners
+        logE"releaseDrone: Clearing nav data listeners"()
+        d.clearNavDataListeners
+        logE"releaseDrone: Clearing status change listeners"()
+        d.clearStatusChangeListeners
+        logE"releaseDrone: disconnecting"()
+        d.disconnect
       case _ =>
     }    
   }

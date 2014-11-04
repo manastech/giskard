@@ -36,8 +36,8 @@ class NetworkManagerFragment extends AkkaFragment with Contexts[AkkaFragment] wi
 
   var connectButton = slot[Button]
 
-  def connect = {
-    Ui(actor.foreach(_ ! NetworkManager.Connect))  
+  def connect = {    
+    Ui(actorSystem.actorSelection("/user/drone") ! Drone.TakeOff)  
   }
 
   def receive = {

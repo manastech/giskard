@@ -2,6 +2,7 @@ package ar.com.manas.giskard
 
 import android.os.Bundle
 import android.widget.LinearLayout
+import android.widget.Button
 import android.view.ViewGroup.LayoutParams._
 import android.support.v4.app.FragmentActivity
 import android.util.Log
@@ -9,18 +10,20 @@ import android.util.Log
 import macroid._
 import macroid.FullDsl._
 import macroid.akkafragments.AkkaActivity
+import macroid.util.Ui
 
 import akka.actor.Props
+import akka.actor.Kill
+import akka.actor.ActorRef
 import akka.event.Logging._
 
 class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with AkkaActivity {
 
   val actorSystemName = "giskard"  
 
-  lazy val drone = actorSystem.actorOf(Drone.props, "drone")
-
   lazy val ping = actorSystem.actorOf(RacketActor.props, "ping")
   lazy val pong = actorSystem.actorOf(RacketActor.props, "pong")
+  lazy val drone = actorSystem.actorOf(Drone.props, "drone") 
 
   System.setProperty("java.net.preferIPv4Stack", "true");
   System.setProperty("java.net.preferIPv6Addresses", "false");
@@ -29,7 +32,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
     super.onCreate(savedInstanceState)
 
     // initialize the actors
-    (drone, ping, pong)
+    (ping, pong)
 
     // layout params
     val lps = lp[LinearLayout](MATCH_PARENT, WRAP_CONTENT, 1.0f)
@@ -39,14 +42,38 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
       // we pass a name for the actor, and id+tag for the fragment
       f[RacketFragment].pass("name" → "ping").framed(Id.ping, Tag.ping) <~ lps,
       f[RacketFragment].pass("name" → "pong").framed(Id.pong, Tag.pong) <~ lps,
-      f[NetworkManagerFragment].pass("name" → "drone/network").framed(Id.network, Tag.network) <~ lps
+      w[Button] <~ 
+        text("Try") <~
+          On.click {
+            Ui { 
+              drone ! Drone.Init 
+            }
+          },
+      w[Button] <~ text("Poll state") <~
+        On.click {
+          Ui {
+            drone ! Drone.PollState
+          }
+        },
+      w[Button] <~ text("Takeoff") <~
+        On.click {
+          Ui {
+            drone ! Drone.TakeOff
+          }
+        },
+      w[Button] <~ text("Disconnect") <~
+        On.click {
+          Ui {
+            drone ! Drone.Disconnect
+          }
+        }
     ) <~ vertical
 
     setContentView(getUi(view))
 
     Log.e("MainActivity", "MainActivity onCreate")
 
-    drone ! Drone.Init    
+    //drone ! Drone.Init    
   }
 
   override def onStart() = {
