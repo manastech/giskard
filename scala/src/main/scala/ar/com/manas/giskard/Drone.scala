@@ -23,8 +23,9 @@ object Drone {
   case object Land
   case object PollState
   case object Disconnect
+  case object PrintNavData
   case class Engage(address: Array[Byte])
-
+  case class Move(angularSpeed: Float, frontBackTilt: Float)
 
   def props = Props(new Drone)
 }
@@ -51,7 +52,7 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
 
   implicit def readyWrapper(func: () => Unit) = new DroneStatusChangeListener { def ready() = func() }   
 
-  implicit def navDataReceivedWrapper(func: (NavData) => Unit) = new NavDataListener { def navDataReceived(nd: NavData) = func(nd) }
+  implicit def navDataReceivedWrapper(func: NavData => Unit) = new NavDataListener { def navDataReceived(nd: NavData) = func(nd) }
     
   var drone: Option[ARDrone] = None
   var landCommand: Option[Cancellable] = None
@@ -69,9 +70,9 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
       drone match {
         case Some(d) => 
           d.takeOff
-          context.system.scheduler.scheduleOnce(10 seconds, self, Land)
+          //context.system.scheduler.scheduleOnce(10 seconds, self, Land)
         case None => logE"Lost connection with drone"()
-      }      
+      }     
     case Land =>
       drone match {
         case Some(d) => 
@@ -89,11 +90,17 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
     case Disconnect =>
       drone match {
         case Some(d) => 
-          logE"Received disconnection request"
+          logE"Received disconnection request"()
           releaseDrone
         case None => logE"Lost connection with drone"()
       }
-        
+    case Move(ang, tilt) =>
+      drone match {
+        case Some(d) => 
+          logE"Received Move request ($ang, $tilt)"()
+          d.move(0, tilt, 0, ang)    
+        case None => logE"Lost connection with drone"() 
+      }
   }
 
   def prepare: () => Unit = () => {
@@ -111,6 +118,13 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
         }        
       case None => logE"Lost connection with drone"()
     }
+  }
+
+  def navDataLog: (NavData) => Unit = (n: NavData) => {
+    logE"Received navData"()
+
+    val navDataClass = n.getClass
+    logE"navDataClass: $navDataClass"()
   }
 
   def engageDrone(address: Array[Byte]) : Unit = {    
@@ -132,6 +146,9 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
           d.clearStatusChangeListeners
           logE"Adding method prepare as new status change listener"()
           d.addStatusChangeListener(prepare)
+
+          logE"Adding method navDataLog as new nav data listener"()
+          d.addNavDataListener(navDataLog)
 
           logE"Connecting..."()
           d.connect

@@ -1,11 +1,12 @@
 package ar.com.manas.giskard
 
 import android.os.Bundle
-import android.widget.LinearLayout
-import android.widget.Button
-import android.view.ViewGroup.LayoutParams._
 import android.support.v4.app.FragmentActivity
 import android.util.Log
+import android.view.ViewGroup.LayoutParams._
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.Button
 
 import macroid._
 import macroid.FullDsl._
@@ -17,13 +18,17 @@ import akka.actor.Kill
 import akka.actor.ActorRef
 import akka.event.Logging._
 
+object GiskardTweaks {
+  val gravityCenter = Tweak[LinearLayout](_.setGravity(Gravity.CENTER_HORIZONTAL))  
+}
+
 class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with AkkaActivity {
+  import GiskardTweaks._
 
   val actorSystemName = "giskard"  
-
-  lazy val ping = actorSystem.actorOf(RacketActor.props, "ping")
-  lazy val pong = actorSystem.actorOf(RacketActor.props, "pong")
-  lazy val drone = actorSystem.actorOf(Drone.props, "drone") 
+  
+  lazy val drone = actorSystem.actorOf(Drone.props, "drone")
+  lazy val square = actorSystem.actorOf(Square.props, "square") 
 
   System.setProperty("java.net.preferIPv4Stack", "true");
   System.setProperty("java.net.preferIPv6Addresses", "false");
@@ -31,19 +36,15 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
   override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
 
-    // initialize the actors
-    (ping, pong)
+    (drone, square)
 
     // layout params
     val lps = lp[LinearLayout](MATCH_PARENT, WRAP_CONTENT, 1.0f)
 
     // include the two fragments
     val view = l[LinearLayout](
-      // we pass a name for the actor, and id+tag for the fragment
-      f[RacketFragment].pass("name" → "ping").framed(Id.ping, Tag.ping) <~ lps,
-      f[RacketFragment].pass("name" → "pong").framed(Id.pong, Tag.pong) <~ lps,
       w[Button] <~ 
-        text("Try") <~
+        text("Connect") <~
           On.click {
             Ui { 
               drone ! Drone.Init 
@@ -66,20 +67,25 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
           Ui {
             drone ! Drone.Disconnect
           }
+        },
+      w[Button] <~ text("Print NavData") <~
+        On.click {
+          Ui {
+            drone ! Drone.PrintNavData
+          }
+        },
+      w[Button] <~ text("Square") <~
+        On.click {
+          Ui {
+            square ! Square.Start
+          }
         }
-    ) <~ vertical
+    ) <~ vertical <~ gravityCenter
 
     setContentView(getUi(view))
-
-    Log.e("MainActivity", "MainActivity onCreate")
-
-    //drone ! Drone.Init    
   }
 
   override def onStart() = {
     super.onStart()
-
-    // start the game
-    ping.tell(RacketActor.Ball, pong)    
   }
 }
