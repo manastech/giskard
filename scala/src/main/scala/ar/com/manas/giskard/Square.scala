@@ -28,13 +28,15 @@ class Square extends Actor with ActorLogging with AutoLogTag {
     case Start =>
       drone ! Drone.TakeOff
       
-      pause(2)
+      //Give it enough time to stabilize
+      pause(8)
 
-      forward(0.5f)
+      for (i <- 0 until 4) {
+        forward(0.1f)
+        pause(2)
 
-      for (i <- 0 until 1) {
         rotate(90)  
-        forward(0.5f)
+        pause(2)
       }    
 
       pause(2)
@@ -50,7 +52,7 @@ class Square extends Actor with ActorLogging with AutoLogTag {
 
   def forward(meters: Float) = {
     val angularSpeed = 0
-    val frontBackTilt = -0.1f
+    val frontBackTilt = -0.2f
 
     for (i <- 0 until 100) {
       drone ! Drone.Move(angularSpeed, frontBackTilt)  
@@ -64,13 +66,11 @@ class Square extends Actor with ActorLogging with AutoLogTag {
         d.setConfigOption(maxEULAAngle, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'))
         d.setConfigOption(maxVertSpeed, String.valueOf(Math.round(1f * 1000)))
         d.setConfigOption(maxYaw, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'))      
-
-        An angular speed of 1f repeated 200 times once each 20ms yields a 180 degree rotation
     */
-    val angularSpeed = 0.5f
+    val angularSpeed = 1f
     val frontBackTilt = 0
 
-    for (i <- 0 until 200) {
+    for (i <- 0 until 100) {
       drone ! Drone.Move(angularSpeed, frontBackTilt)
       Thread.sleep(20)
     }
