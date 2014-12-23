@@ -29,6 +29,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
   
   lazy val drone = actorSystem.actorOf(Drone.props, "drone")
   lazy val square = actorSystem.actorOf(Square.props, "square") 
+  lazy val camera = actorSystem.actorOf(Camera.props, "camera")
 
   System.setProperty("java.net.preferIPv4Stack", "true");
   System.setProperty("java.net.preferIPv6Addresses", "false");
@@ -36,7 +37,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
   override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
 
-    (drone, square)
+    (drone, square, camera)
 
     // layout params
     val lps = lp[LinearLayout](MATCH_PARENT, WRAP_CONTENT, 1.0f)
@@ -78,6 +79,12 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
         On.click {
           Ui {
             square ! Square.Start
+          }
+        },
+      w[Button] <~ text("Take pic") <~
+        On.click {
+          Ui {
+            camera ! Camera.SaveSnapshot 
           }
         }
     ) <~ vertical <~ gravityCenter

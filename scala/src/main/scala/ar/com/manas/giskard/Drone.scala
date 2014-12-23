@@ -1,8 +1,13 @@
 package ar.com.manas.giskard
 
 import java.io.IOException
+import java.io.File
+import java.io.FileOutputStream
 import java.net.InetAddress
 import java.text.DecimalFormat
+
+import android.graphics.Bitmap
+import android.os.Environment
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -14,36 +19,54 @@ import macroid.AutoLogTag
 
 import com.codeminders.ardrone.ARDrone
 import com.codeminders.ardrone.DroneStatusChangeListener
+import com.codeminders.ardrone.DroneVideoListener
 import com.codeminders.ardrone.NavDataListener
 import com.codeminders.ardrone.NavData
 
+object DroneUnits {
+  type Meters = Float
+  type Seconds = Double
+}
+
 object Drone {
-  case object Init
-  case object TakeOff
-  case object Land
-  case object PollState
-  case object Disconnect
-  case object PrintNavData
-  case class Engage(address: Array[Byte])
-  case class Move(angularSpeed: Float, frontBackTilt: Float)
+  import DroneUnits._
+
+  sealed abstract trait Message
+  case object Init extends Message
+  case object TakeOff extends Message
+  case object Land extends Message
+  case object PollState extends Message
+  case object Disconnect extends Message
+  case object PrintNavData extends Message   
+  case object AskAltitude extends Message
+  case object SaveSnapshot extends Message
+  case class Engage(address: Array[Byte]) extends Message
+  case class Move(leftRightTilt: Float, frontBackTilt: Float, verticalSpeed: Meters, angularSpeed: Float) extends Message
+
+
+
+  sealed abstract trait Response
+  case class AltitudeIs(x: Meters) extends Response
 
   def props = Props(new Drone)
 }
 
 object DroneTimeouts {
-  val navDataTimeout = 10000
-  val videoTimeout = 60000
-  val connectionTimeout = 10000
+  val NavDataTimeout = 10000
+  val VideoTimeout = 60000
+  val ConnectionTimeout = 10000
 }
 
 object DroneParams {
-  val maxYaw = "control:control_yaw"
-  val maxVertSpeed = "control:control_vz_max"
-  val maxEULAAngle = "control:euler_angle_max"
-  val maxAltitude = "control:altitude_max"
+  val MaxYaw = "control:control_yaw"
+  val MaxVertSpeed = "control:control_vz_max"
+  val MaxEULAAngle = "control:euler_angle_max"
+  val MaxAltitude = "control:altitude_max"
 
-  val twoDForm = new DecimalFormat("#.##")
+  val TwoDForm = new DecimalFormat("#.##")
 }
+
+case class VideoFrame(startX: Int, startY: Int, w: Int, h: Int, rgbArray: Array[Int], offset: Int, scansize: Int)
 
 class Drone extends Actor with ActorLogging with AutoLogTag {
   import Drone._
@@ -53,54 +76,92 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   implicit def readyWrapper(func: () => Unit) = new DroneStatusChangeListener { def ready() = func() }   
 
   implicit def navDataReceivedWrapper(func: NavData => Unit) = new NavDataListener { def navDataReceived(nd: NavData) = func(nd) }
+
+  implicit def videoReceiver(func: VideoFrame => Unit) = new DroneVideoListener { 
+    def frameReceived(startX: Int, startY: Int, w: Int, h: Int, rgbArray: Array[Int], offset: Int, scansize: Int) = {
+      func(new VideoFrame(startX, startY, w, h, rgbArray, offset, scansize))
+    }
+  }
     
   var drone: Option[ARDrone] = None
   var landCommand: Option[Cancellable] = None
+  var currentFrame: Option[VideoFrame] = None
 
   def receive = {
-    case Init =>
-      logE"Init drone"()
-      self ! Engage(Array[Byte](192.toByte, 168.toByte, 1, 1))
-    case Engage(address) => 
-      val addr = address.toString()
-      logE"Engage address $addr"()
-      engageDrone(address)     
-    case TakeOff =>
-      logE"Received takeoff request"()
-      drone match {
-        case Some(d) => 
-          d.takeOff
-          //context.system.scheduler.scheduleOnce(10 seconds, self, Land)
-        case None => logE"Lost connection with drone"()
-      }     
-    case Land =>
-      drone match {
-        case Some(d) => 
-          logE"Landing..."()
-          d.land
-        case None => logE"Lost connection with drone"()
-      }
-    case PollState =>
-      drone match {
-        case Some(d) =>
-          val state = d.getState
-          logE"Current drone state is: $state"()
-        case None => logE"Lost connection with drone"()
-      }
-    case Disconnect =>
-      drone match {
-        case Some(d) => 
-          logE"Received disconnection request"()
-          releaseDrone
-        case None => logE"Lost connection with drone"()
-      }
-    case Move(ang, tilt) =>
-      drone match {
-        case Some(d) => 
-          logE"Received Move request ($ang, $tilt)"()
-          d.move(0, tilt, 0, ang)    
-        case None => logE"Lost connection with drone"() 
-      }
+    case message: Message => message match {
+      case Init =>
+        logE"Init drone"()
+        self ! Engage(Array[Byte](192.toByte, 168.toByte, 1, 1))
+      case Engage(address) => 
+        val addr = address.toString()
+        logE"Engage address $addr"()
+        engageDrone(address)     
+      case TakeOff =>
+        logE"Received takeoff request"()
+        drone match {
+          case Some(d) => 
+            d.takeOff
+          case None => logE"Lost connection with drone"()
+        }     
+      case Land =>
+        drone match {
+          case Some(d) => 
+            logE"Landing..."()
+            d.land
+          case None => logE"Lost connection with drone"()
+        }
+      case PollState =>
+        drone match {
+          case Some(d) =>
+            val state = d.getState
+            logE"Current drone state is: $state"()
+          case None => logE"Lost connection with drone"()
+        }
+      case Disconnect =>
+        drone match {
+          case Some(d) => 
+            logE"Received disconnection request"()
+            releaseDrone
+          case None => logE"Lost connection with drone"()
+        }
+      case Move(leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed) =>
+        drone match {
+          case Some(d) => 
+            logE"Received Move request ($leftRightTilt, $frontBackTilt, $verticalSpeed, $angularSpeed)"()
+            d.move(leftRightTilt, frontBackTilt, verticalSpeed, angularSpeed)    
+          case None => logE"Lost connection with drone"() 
+        }
+      case SaveSnapshot =>
+        drone match {
+          case Some(d) =>
+            logE"Received save snapshot request"()
+            saveSnapshot
+          case None => logE"Lost connection with drone"()
+        }
+    }
+  }
+
+  def saveSnapshot = {
+    currentFrame match {
+      case Some(VideoFrame(_, _, w, h, rgbArray, offset, scansize)) =>
+        var b = Bitmap.createBitmap(rgbArray, offset, scansize, w, h, Bitmap.Config.RGB_565)
+        b.setDensity(100)
+
+        var photo = new File(Environment.getExternalStorageDirectory(), "photo.jpg")
+
+        if (photo.exists()) {
+          photo.delete()
+        }
+
+        var out = new FileOutputStream(photo.getPath());
+
+        b.compress(Bitmap.CompressFormat.PNG, 100, out)
+        if (out != null) {
+            out.close()
+        }
+      case None => 
+        logE"No frame captured to save into image"()
+    }
   }
 
   def prepare: () => Unit = () => {
@@ -109,6 +170,8 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
     drone match {
       case Some(d) =>
         try {
+          logE"Adding video listener"()
+          d.addImageListener(captureFrame)
           logE"Setting combined Yaw Mode..."()
           d.setCombinedYawMode(true)
           logE"Trimming..."()
@@ -120,11 +183,16 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
     }
   }
 
+  def captureFrame: (VideoFrame) => Unit = (f: VideoFrame) => {
+    logE"Received video frame"()
+    currentFrame = Some(f)
+  }
+
   def navDataLog: (NavData) => Unit = (n: NavData) => {
-    logE"Received navData"()
+    //logE"Received navData"()
 
     val navDataClass = n.getClass
-    logE"navDataClass: $navDataClass"()
+    //logE"navDataClass: $navDataClass"()
   }
 
   def engageDrone(address: Array[Byte]) : Unit = {    
@@ -148,10 +216,14 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
           d.addStatusChangeListener(prepare)
 
           logE"Adding method navDataLog as new nav data listener"()
-          d.addNavDataListener(navDataLog)
+          d.addNavDataListener(navDataLog)          
 
           logE"Connecting..."()
           d.connect
+
+          logE"Selecting video channel..."()
+          d.selectVideoChannel(ARDrone.VideoChannel.HORIZONTAL_ONLY)
+
           logE"Clearing emergency signal"()
           d.clearEmergencySignal
           
@@ -159,7 +231,7 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
           setupDrone
         case None =>
           logE"Creating ARDrone instance"()
-          drone = Some(new ARDrone(InetAddress.getByAddress(address), navDataTimeout, videoTimeout))
+          drone = Some(new ARDrone(InetAddress.getByAddress(address), NavDataTimeout, VideoTimeout))
           self ! Engage(address)
       }
     } catch {    
@@ -206,10 +278,10 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   def setupDrone = {
     drone match {
       case Some(d) =>
-        d.setConfigOption(maxAltitude, String.valueOf(Math.round(1.5f * 1000)))
-        d.setConfigOption(maxEULAAngle, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'))
-        d.setConfigOption(maxVertSpeed, String.valueOf(Math.round(1f * 1000)))
-        d.setConfigOption(maxYaw, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'))      
+        d.setConfigOption(MaxAltitude, String.valueOf(Math.round(1.5f * 1000)))
+        d.setConfigOption(MaxEULAAngle, TwoDForm.format(6f * Math.PI / 180f).replace(',', '.'))
+        d.setConfigOption(MaxVertSpeed, String.valueOf(Math.round(1f * 1000)))
+        d.setConfigOption(MaxYaw, TwoDForm.format(50f * Math.PI / 180f).replace(',', '.'))      
       case None =>                
     }
   }

@@ -17,12 +17,9 @@ object Square {
   def props = Props(new Square)
 }
 
-
-class Square extends Actor with ActorLogging with AutoLogTag {
+class Square extends Behavior {
   import Square._
   import Drone._
-
-  lazy val drone = context.actorSelection("/user/drone")
 
   def receive = {
     case Start =>
@@ -31,11 +28,11 @@ class Square extends Actor with ActorLogging with AutoLogTag {
       //Give it enough time to stabilize
       pause(8)
 
-      for (i <- 0 until 4) {
-        forward(0.1f)
+      for (i <- 0 until 40) {
+        forward()
         pause(2)
 
-        rotate(90)  
+        rotate()  
         pause(2)
       }    
 
@@ -44,39 +41,5 @@ class Square extends Actor with ActorLogging with AutoLogTag {
       land
 
     case Stop => land
-  }
-
-  def pause(seconds: Double) = {
-    Thread.sleep((seconds * 1000).toInt)
-  }
-
-  def forward(meters: Float) = {
-    val angularSpeed = 0
-    val frontBackTilt = -0.2f
-
-    for (i <- 0 until 100) {
-      drone ! Drone.Move(angularSpeed, frontBackTilt)  
-      Thread.sleep(20)
-    }
-  }
-
-  def rotate(degrees: Double) = {
-    /*With current settings:
-        d.setConfigOption(maxAltitude, String.valueOf(Math.round(1.5f * 1000)))
-        d.setConfigOption(maxEULAAngle, twoDForm.format(6f * Math.PI / 180f).replace(',', '.'))
-        d.setConfigOption(maxVertSpeed, String.valueOf(Math.round(1f * 1000)))
-        d.setConfigOption(maxYaw, twoDForm.format(50f * Math.PI / 180f).replace(',', '.'))      
-    */
-    val angularSpeed = 1f
-    val frontBackTilt = 0
-
-    for (i <- 0 until 100) {
-      drone ! Drone.Move(angularSpeed, frontBackTilt)
-      Thread.sleep(20)
-    }
-  }
-
-  def land = {
-    drone ! Drone.Land
   }
 }
