@@ -86,6 +86,7 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   var drone: Option[ARDrone] = None
   var landCommand: Option[Cancellable] = None
   var currentFrame: Option[VideoFrame] = None
+  var currentNavData: Option[NavData] = None
 
   def receive = {
     case message: Message => message match {
@@ -138,6 +139,11 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
             saveSnapshot
           case None => logE"Lost connection with drone"()
         }
+      case AskAltitude =>
+        currentNavData match {
+          case Some(n) => sender ! AltitudeIs(n.getAltitude())          
+          case None => sender ! AltitudeIs(0)
+        }
     }
   }
 
@@ -189,10 +195,7 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
   }
 
   def navDataLog: (NavData) => Unit = (n: NavData) => {
-    //logE"Received navData"()
-
-    val navDataClass = n.getClass
-    //logE"navDataClass: $navDataClass"()
+    currentNavData = Some(n)
   }
 
   def engageDrone(address: Array[Byte]) : Unit = {    

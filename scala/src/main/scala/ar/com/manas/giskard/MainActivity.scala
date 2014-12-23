@@ -30,6 +30,7 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
   lazy val drone = actorSystem.actorOf(Drone.props, "drone")
   lazy val square = actorSystem.actorOf(Square.props, "square") 
   lazy val camera = actorSystem.actorOf(Camera.props, "camera")
+  lazy val riseAndHover = actorSystem.actorOf(RiseAndHover.props, "riseAndHover")
 
   System.setProperty("java.net.preferIPv4Stack", "true");
   System.setProperty("java.net.preferIPv6Addresses", "false");
@@ -79,6 +80,12 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
         On.click {
           Ui {
             square ! Square.Start
+          }
+        },
+      w[Button] <~ text("Rise and hover") <~
+        On.click {
+          Ui {
+            riseAndHover ! RiseAndHover.Start 
           }
         },
       w[Button] <~ text("Take pic") <~

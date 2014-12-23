@@ -22,8 +22,8 @@ trait Behavior extends Actor with ActorLogging with AutoLogTag {
   def pause(t: Seconds) = { Thread.sleep((t * 1000).toInt) }
   def forward() = { command(0, -0.2f, 0, 0) }
   def rotate() = { command(0, 0, 0, 1f) }
-  def moveUp() = { command(0, 0, 0.5f, 0) }
-  def moveDown() = { command(0, 0, -0.5f, 0) }
+  def moveUp() = { command(0, 0, 0.05f, 0) }
+  def moveDown() = { command(0, 0, -0.05f, 0) }
   def land = { drone ! Drone.Land }
 
   private def command(leftRightTilt: Float, frontBackTilt: Float, verticalSpeed: Meters, angularSpeed: Float) = {

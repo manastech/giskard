@@ -37,7 +37,7 @@ class RiseAndHover extends Behavior with FSM[RiseAndHover.State, RiseAndHover.Da
   val StabilizingDelay = 8 seconds
   val VerticalStep = 0.5f
   val FinalAltitude = 3 * VerticalStep
-  val ErrorTolerance = 0.01
+  val ErrorTolerance = 0.05
 
   startWith(Off, None)
 
@@ -47,12 +47,18 @@ class RiseAndHover extends Behavior with FSM[RiseAndHover.State, RiseAndHover.Da
       goto(Stabilizing)
   }
 
-  when(Stabilizing, stateTimeout = StabilizingDelay) { 
-    case Event(StateTimeout, None) => goto(ApproachingTarget) using Target(VerticalStep)
+  when(Stabilizing, stateTimeout = 8 seconds) {      
+    case Event(FSM.StateTimeout, None) => 
+      logE"Stabilizing"()
+      logE"Current target altitude $VerticalStep"()
+      goto(ApproachingTarget) using Target(VerticalStep)
   }
 
   when(ApproachingTarget) {
     case Event(Drone.AltitudeIs(currentAltitude), Target(altitude)) =>
+      logE"ApproachingTarget"()
+      logE"Current measured altitude $currentAltitude"()
+      logE"Current target $altitude"()
       val delta = currentAltitude - altitude 
       if (delta.abs <= ErrorTolerance) {
         goto(AtTarget) using Target(altitude)
@@ -66,6 +72,8 @@ class RiseAndHover extends Behavior with FSM[RiseAndHover.State, RiseAndHover.Da
 
   when(AtTarget, stateTimeout = 5 seconds) {
     case Event(StateTimeout, Target(altitude)) => 
+      logE"AtTarget"()
+      logE"Current target $altitude"()
       if (altitude == FinalAltitude) {
         land
         goto(Off) using None
@@ -79,6 +87,15 @@ class RiseAndHover extends Behavior with FSM[RiseAndHover.State, RiseAndHover.Da
     case Event(e, s) =>       
       logE"received unhandled request $e in state $s"()
       stay
+  }
+
+  onTransition {
+    case _ -> ApproachingTarget =>
+      stateData match {
+        case _ => 
+          logE"Transitioning from stabilizing to ApproachingTarget"()
+          drone ! Drone.AskAltitude
+      }
   }
 
   initialize()
