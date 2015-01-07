@@ -28,7 +28,8 @@ libraryDependencies ++= Seq(
   "org.macroid" %% "macroid" % "2.0.0-M2",
   "org.macroid" %% "macroid-akka-fragments" % "2.0.0-M2",
   "com.typesafe.akka" %% "akka-actor" % "2.3.3",
-  compilerPlugin("org.brianmckenna" %% "wartremover" % "0.10")
+  compilerPlugin("org.brianmckenna" %% "wartremover" % "0.10"),
+  "com.android.support" % "support-v4" % "20.0.0"
 )
 
 proguardScala in Android := true
