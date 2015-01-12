@@ -64,6 +64,12 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
             drone ! Drone.TakeOff
           }
         },
+      w[Button] <~ text("Land") <~
+        On.click {
+          Ui {
+            drone ! Drone.Land
+          }
+        },
       w[Button] <~ text("Disconnect") <~
         On.click {
           Ui {
