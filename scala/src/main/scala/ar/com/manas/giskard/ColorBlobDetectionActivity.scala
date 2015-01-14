@@ -99,7 +99,7 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
     // Open CV needs a view id to retrieve this view. Since
     // we're not using the usual XML resource system, we just assign
     // it manually
-    val camera = new JavaCameraView(this, 42)
+    val camera = new JavaCameraView(this, CameraBridgeViewBase.CAMERA_ID_ANY)
     camera.setLayoutParams(cameraLayoutParams)
     camera.setCvCameraViewListener(cameraViewListenerWrapper)
 
