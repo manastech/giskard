@@ -43,8 +43,6 @@ object Drone {
   case class Engage(address: Array[Byte]) extends Message
   case class Move(leftRightTilt: Float, frontBackTilt: Float, verticalSpeed: Meters, angularSpeed: Float) extends Message
 
-
-
   sealed abstract trait Response
   case class AltitudeIs(x: Meters) extends Response
 
