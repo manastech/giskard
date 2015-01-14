@@ -9,11 +9,16 @@ import org.opencv.core.Scalar
 import org.opencv.core.MatOfPoint
 import org.opencv.imgproc.Imgproc
 
+import macroid.Logging._
+import macroid.AutoLogTag
+
+import android.util.Log;
+
 object ColorBlobDetector {
   var minContourArea = 0.1
 }
 
-class ColorBlobDetector extends NicerScalars {
+class ColorBlobDetector extends NicerScalars with AutoLogTag {
   import ColorBlobDetector._
 
   val lowerBound = new Scalar(0)
@@ -66,6 +71,8 @@ class ColorBlobDetector extends NicerScalars {
   }
 
   def process(rgbaImage: Mat) = {
+    Log.e("ColorBlobDetector", "Processing contours")
+
     Imgproc.pyrDown(rgbaImage, pyrDownMat)
     Imgproc.pyrDown(pyrDownMat, pyrDownMat)
     Imgproc.cvtColor(pyrDownMat, hsvMat, Imgproc.COLOR_RGB2HSV_FULL)
@@ -74,12 +81,12 @@ class ColorBlobDetector extends NicerScalars {
     
     Imgproc.dilate(mask, dilatedMask, new Mat())
     
-    val contours = new ArrayList[MatOfPoint]()
+    val foundContours = new ArrayList[MatOfPoint]()
     
-    Imgproc.findContours(dilatedMask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+    Imgproc.findContours(dilatedMask, foundContours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
     
     var maxArea = 0.0
-    var each = contours.iterator()
+    var each = foundContours.iterator()
     
     while (each.hasNext) {
       val wrapper = each.next()
@@ -87,12 +94,22 @@ class ColorBlobDetector extends NicerScalars {
       if (area > maxArea) maxArea = area
     }
     
+    val contoursAmount = contours.size()
+    logE"Contours detected: $contoursAmount"()
+
     contours.clear()
     
-    each = contours.iterator()
+    each = foundContours.iterator()
     while (each.hasNext) {
       val contour = each.next()
-      if (Imgproc.contourArea(contour) > minContourArea * maxArea) {
+
+      val contourArea = Imgproc.contourArea(contour)
+      
+      Log.e("ColorBlobDetector", "Contour area: $contourArea")
+      Log.e("ColorBlobDetector", "MinContour area: $minContourArea")
+      Log.e("ColorBlobDetector", "Max area: $maxArea")
+
+      if (contourArea > minContourArea * maxArea) {
         Core.multiply(contour, new Scalar(4, 4), contour)
         contours.add(contour)
       }

@@ -41,7 +41,9 @@ import org.opencv.core.Rect
 
 import org.opencv.imgproc.Imgproc
 
-class ColorBlobDetectionActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with NicerScalars {
+import android.util.Log
+
+class ColorBlobDetectionActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with AutoLogTag with NicerScalars {
 
   lazy val openCvLoaderCallback = new BaseLoaderCallback(this) {
     override def onManagerConnected(status: Int) = loadOpenCV(this, status)
@@ -71,7 +73,7 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
 
   def loadOpenCV(callback: BaseLoaderCallback, status: Int) = status match {
     case LoaderCallbackInterface.SUCCESS => {
-      logE"OpenCV loaded successfully"()
+      Log.e("ColorBlobDetectionActivity", "OpenCV loaded successfully")
 
       openCvCameraView match {
         case Some(c) => {
@@ -215,6 +217,8 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
 
 
   def onCameraFrame(inputFrame : CvCameraViewFrame)  = {
+    logE"Received Frame"()
+
     val someRgba = inputFrame.rgba()
     rgba = Some(someRgba)
 
@@ -224,8 +228,9 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
           det.process(someRgba)
 
           val contours = det.getContours()
+          val amountOfContours = contours.size()
 
-          logE"Contours count: $contours.size()"()
+          logE"Contours count: $amountOfContours"()
 
           Imgproc.drawContours(someRgba, contours, -1, color)
 
@@ -235,6 +240,9 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
           val spectrumLabel = someRgba.submat(4, 4 + spectr.rows(), 70, 70 + spectr.cols())
           spectrumLabel.copyTo(spectrumLabel)
         }
+      case _ =>
+        logE"Unexpected status when receiving frame"()
+
     }    
 
     someRgba
