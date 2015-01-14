@@ -43,11 +43,11 @@ import org.opencv.imgproc.Imgproc
 
 class ColorBlobDetectionActivity extends FragmentActivity with Contexts[FragmentActivity] with IdGeneration with NicerScalars {
 
-  lazy val openCvLoaderCallback = new BaseLoaderCallback(this) { 
+  lazy val openCvLoaderCallback = new BaseLoaderCallback(this) {
     override def onManagerConnected(status: Int) = loadOpenCV(this, status)
-  } 
+  }
 
-  lazy val touchCallback = new OnTouchListener { 
+  lazy val touchCallback = new OnTouchListener {
     def onTouch(v: View, event: MotionEvent) = handleTouch(event)
   }
 
@@ -80,11 +80,11 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
         }
       }
     }
-    case _ => callback.onManagerConnected(status)    
+    case _ => callback.onManagerConnected(status)
   }
 
   override def onCreate(savedInstanceState: Bundle) = {
-    logE"called onCreate"()
+    logE"called onCreate of ColorBlobDetectorActivity"()
     super.onCreate(savedInstanceState)
 
     requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -93,7 +93,7 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
     arrangeView
   }
 
-  def arrangeView = {    
+  def arrangeView = {
     val cameraLayoutParams = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT)
 
     // Open CV needs a view id to retrieve this view. Since
