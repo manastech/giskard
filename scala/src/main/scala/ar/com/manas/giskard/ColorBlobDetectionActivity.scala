@@ -121,6 +121,9 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
 
   override def onResume() = {
     super.onResume()
+
+    logE"Loading OpenCV"()
+
     OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, openCvLoaderCallback)
   }
 

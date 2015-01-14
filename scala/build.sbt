@@ -52,5 +52,6 @@ proguardOptions in Android ++= Seq(
   "-keep class akka.dispatch.UnboundedMailbox { *; }",
   "-keep class akka.actor.DefaultSupervisorStrategy { *; }",
   "-keep class macroid.akkafragments.AkkaAndroidLogger { *; }",
-  "-keep class akka.event.Logging$LogExt { *; }"
+  "-keep class akka.event.Logging$LogExt { *; }",
+  "-keep class org.opencv.**"
 )
