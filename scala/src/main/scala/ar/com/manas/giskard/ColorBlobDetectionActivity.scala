@@ -58,16 +58,16 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
   }
 
   var isColorSelected = false
-  var rgba = new Mat()
-  var blobColorRgba = new Scalar(255)
-  var blobColorHsv = new Scalar(255)
-  var detector = new ColorBlobDetector
-  var spectrum = new Mat
+  var rgba: Option[Mat] = None
+  var blobColorRgba: Option[Scalar] = None
+  var blobColorHsv: Option[Scalar] = None
+  var detector: Option[ColorBlobDetector] = None
+  var spectrum: Option[Mat] = None
 
   var openCvCameraView : Option[CameraBridgeViewBase] = None
 
-  var spectrumSize = new Size(200, 64)
-  var contourColor = new Scalar(255, 0, 0, 255)
+  var spectrumSize: Option[Size] = None
+  var contourColor: Option[Scalar] = None
 
   def loadOpenCV(callback: BaseLoaderCallback, status: Int) = status match {
     case LoaderCallbackInterface.SUCCESS => {
@@ -141,24 +141,23 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
   }
 
   def onCameraViewStarted(width : Int, height : Int) = {
-    rgba = new Mat(height, width, CvType.CV_8UC4)
-    detector = new ColorBlobDetector
-    spectrum = new Mat
-    blobColorRgba = new Scalar(255)
-    blobColorHsv = new Scalar(255)
-    spectrumSize = new Size(200, 64)
-    contourColor = new Scalar(255, 0, 0, 255)
+    rgba = Some(new Mat(height, width, CvType.CV_8UC4))
+    detector = Some(new ColorBlobDetector)
+    spectrum = Some(new Mat)
+    blobColorRgba = Some(new Scalar(255))
+    blobColorHsv = Some(new Scalar(255))
+    spectrumSize = Some(new Size(200, 64))
+    contourColor = Some(new Scalar(255, 0, 0, 255))
   }
 
-  def onCameraViewStopped() = {
-    rgba.release()
-  }
+  def onCameraViewStopped() = rgba match { case Some(r) => r.release() }
+
 
   def handleTouch(event: MotionEvent): Boolean = {
-    openCvCameraView match {
-      case Some(c) => {
-        val cols = rgba.cols()
-        val rows = rgba.rows()
+    (openCvCameraView, rgba, spectrum, spectrumSize, detector) match {
+      case (Some(c), Some(someRgba), Some(spectr), Some(spectrSize), Some(det)) => {
+        val cols = someRgba.cols()
+        val rows = someRgba.rows()
 
         val xOffset = (c.getWidth() - cols) / 2
         val yOffset = (c.getHeight() - rows) / 2
@@ -181,26 +180,28 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
 
         touchedRect.height = (if (y + 4 < rows) y + 4 - touchedRect.y else rows - touchedRect.y).toInt
 
-        val touchedRegionRgba = rgba.submat(touchedRect)
+        val touchedRegionRgba = someRgba.submat(touchedRect)
         val touchedRegionHsv = new Mat
 
         Imgproc.cvtColor(touchedRegionRgba, touchedRegionHsv, Imgproc.COLOR_RGB2HSV_FULL)
 
-        blobColorHsv = Core.sumElems(touchedRegionHsv)
+        val bchsv = Core.sumElems(touchedRegionHsv)
+        blobColorHsv = Some(bchsv)
 
         val pointCount = touchedRect.width * touchedRect.height
 
-        for (i <- 0 until blobColorHsv.value.length) {
-          blobColorHsv.value(i) /= pointCount
+        for (i <- 0 until bchsv.value.length) {
+          bchsv.value(i) /= pointCount
         }
 
-        blobColorRgba = convertScalarHsv2Rgba(blobColorHsv)
+        val bcrgba = convertScalarHsv2Rgba(bchsv)
+        blobColorRgba = Some(bcrgba)
 
-        logE"Touched rgba color: ($blobColorRgba.value[0], $blobColorRgba.value[1], $blobColorRgba.value[2], blobColorRgba[3])"()
+        logE"Touched rgba color: ($bcrgba.value[0], $bcrgba.value[1], $bcrgba.value[2], $bcrgba.value[3])"()
 
-        detector.setHsvColor(blobColorHsv)
+        det.setHsvColor(bchsv)
 
-        Imgproc.resize(detector.getSpectrum, spectrum, spectrumSize)
+        Imgproc.resize(det.getSpectrum, spectr, spectrSize)
 
         isColorSelected = true
 
@@ -213,26 +214,30 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
   }
 
 
-  def onCameraFrame(inputFrame : CvCameraViewFrame) = {
-    rgba = inputFrame.rgba()
+  def onCameraFrame(inputFrame : CvCameraViewFrame)  = {
+    val someRgba = inputFrame.rgba()
+    rgba = Some(someRgba)
 
-    if (isColorSelected) {
-      detector.process(rgba)
+    (contourColor, blobColorRgba, spectrum, detector) match {
+      case (Some(color), Some(blobRgba), Some(spectr), Some(det)) =>
+        if (isColorSelected) {
+          det.process(someRgba)
 
-      val contours = detector.getContours()
+          val contours = det.getContours()
 
-      logE"Contours count: $contours.size()"()
+          logE"Contours count: $contours.size()"()
 
-      Imgproc.drawContours(rgba, contours, -1, contourColor)
+          Imgproc.drawContours(someRgba, contours, -1, color)
 
-      val colorLabel = rgba.submat(4, 68, 4, 68)
-      colorLabel.setTo(blobColorRgba)
+          val colorLabel = someRgba.submat(4, 68, 4, 68)
+          colorLabel.setTo(blobRgba)
 
-      val spectrumLabel = rgba.submat(4, 4 + spectrum.rows(), 70, 70 + spectrum.cols())
-      spectrumLabel.copyTo(spectrumLabel)
-    }
+          val spectrumLabel = someRgba.submat(4, 4 + spectr.rows(), 70, 70 + spectr.cols())
+          spectrumLabel.copyTo(spectrumLabel)
+        }
+    }    
 
-    rgba
+    someRgba
   }
 
   def convertScalarHsv2Rgba(hsvColor : Scalar) = {
