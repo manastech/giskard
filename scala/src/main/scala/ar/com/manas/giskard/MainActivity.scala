@@ -21,6 +21,10 @@ import akka.actor.Kill
 import akka.actor.ActorRef
 import akka.event.Logging._
 
+import org.opencv.android.BaseLoaderCallback
+import org.opencv.android.LoaderCallbackInterface
+import org.opencv.android.OpenCVLoader
+
 object GiskardTweaks {
   val gravityCenter = Tweak[LinearLayout](_.setGravity(Gravity.CENTER_HORIZONTAL))
 }
@@ -37,6 +41,15 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
 
   System.setProperty("java.net.preferIPv4Stack", "true");
   System.setProperty("java.net.preferIPv6Addresses", "false");
+
+  lazy val openCvLoaderCallback = new BaseLoaderCallback(this) {
+    override def onManagerConnected(status: Int) = loadOpenCV(this, status)
+  }
+
+  def loadOpenCV(callback: BaseLoaderCallback, status: Int) = status match {
+    case LoaderCallbackInterface.SUCCESS => Log.e("ColorBlobDetectionActivity", "OpenCV loaded successfully")
+    case _ => callback.onManagerConnected(status)
+  }
 
   override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
@@ -117,5 +130,13 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
 
   override def onStart() = {
     super.onStart()
+  }
+
+  override def onResume() = {
+    super.onResume()
+
+    Log.e("MainActivity", "Loading OpenCV")
+
+    OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, openCvLoaderCallback)
   }
 }
