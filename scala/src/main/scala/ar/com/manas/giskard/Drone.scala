@@ -167,18 +167,18 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
         var b = Bitmap.createBitmap(rgbArray, offset, scansize, w, h, Bitmap.Config.RGB_565)
         b.setDensity(100)
 
-        //var photo = new File(Environment.getExternalStorageDirectory(), "photo.jpg")
+        var photo = new File(Environment.getExternalStorageDirectory(), "photo.jpg")
 
-        //if (photo.exists()) {
-        //  photo.delete()
-        //}
+        if (photo.exists()) {
+         photo.delete()
+        }
 
-        //var out = new FileOutputStream(photo.getPath())
+        var out = new FileOutputStream(photo.getPath())
 
-        //b.compress(Bitmap.CompressFormat.PNG, 100, out)
-        //if (out != null) {
-        //    out.close()
-        //}
+        b.compress(Bitmap.CompressFormat.PNG, 100, out)
+        if (out != null) {
+           out.close()
+        }
 
         initializeBlobDetection
         detector = Some(new ColorBlobDetector)
@@ -202,32 +202,21 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
 
         var picWithContours = new File(Environment.getExternalStorageDirectory(), "photoWithContours.jpg")
 
+        logE"Pic With Contours: $picWithContours"()
         if (picWithContours.exists()) {
           picWithContours.delete()
         }
 
-        Highgui.imwrite(picWithContours.getPath(), someRgba)
+        var out2 = new FileOutputStream(picWithContours.getPath())
+        Utils.matToBitmap(someRgba, b)
+        b.compress(Bitmap.CompressFormat.PNG, 100, out2)
+        if (out2 != null) {
+           out2.close()
+        }
 
+        // Highgui.imwrite(picWithContours.getPath(), someRgba)
 
-        // val colorLabel = someRgba.submat(4, 68, 4, 68)
-
-        // val spectrumLabel = someRgba.submat(4, 4 + spectr.rows(), 70, 70 + spectr.cols())
-        // spectrumLabel.copyTo(spectrumLabel)
-
-        // var photo2 = new File(Environment.getExternalStorageDirectory(), "photo2.jpg")
-
-        // if (photo2.exists()) {
-        //   photo2.delete()
-        // }
-
-        // var out = new FileOutputStream(photo2.getPath())
-
-        // b.compress(Bitmap.CompressFormat.PNG, 100, out)
-        // if (out != null) {
-        //     out.close()
-        // }
         someRgba
-
       case None =>
         logE"No frame captured to save into image"()
     }
