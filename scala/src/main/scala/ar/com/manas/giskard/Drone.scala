@@ -8,6 +8,7 @@ import java.text.DecimalFormat
 
 import android.graphics.Bitmap
 import android.os.Environment
+import org.opencv.android.Utils
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,6 +31,7 @@ import org.opencv.core.Size
 import org.opencv.core.Scalar
 import org.opencv.core.CvType
 import org.opencv.core.Rect
+import org.opencv.imgproc.Imgproc
 
 object DroneUnits {
   type Meters = Float
@@ -165,23 +167,26 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
         var b = Bitmap.createBitmap(rgbArray, offset, scansize, w, h, Bitmap.Config.RGB_565)
         b.setDensity(100)
 
-        var photo = new File(Environment.getExternalStorageDirectory(), "photo.jpg")
+        //var photo = new File(Environment.getExternalStorageDirectory(), "photo.jpg")
 
-        if (photo.exists()) {
-          photo.delete()
-        }
+        //if (photo.exists()) {
+        //  photo.delete()
+        //}
 
-        var out = new FileOutputStream(photo.getPath())
+        //var out = new FileOutputStream(photo.getPath())
 
-        b.compress(Bitmap.CompressFormat.PNG, 100, out)
-        if (out != null) {
-            out.close()
-        }
+        //b.compress(Bitmap.CompressFormat.PNG, 100, out)
+        //if (out != null) {
+        //    out.close()
+        //}
 
         initializeBlobDetection
         detector = Some(new ColorBlobDetector)
 
-        val someRgba = Highgui.imread(photo.getPath())
+        val someRgba = new Mat(h, w, CvType.CV_8UC4, new Scalar(4))
+        Utils.bitmapToMat(b, someRgba)
+
+        //val someRgba = Highgui.imread(photo.getPath())
 
         val bchsv = new Scalar(Array(26, 68, 85.9, 0.0))
         detector.get.setHsvColor(bchsv)
@@ -193,7 +198,16 @@ class Drone extends Actor with ActorLogging with AutoLogTag {
 
         logE"Contours count: $amountOfContours"()
 
-        // Imgproc.drawContours(someRgba, contours, -1, color)
+        Imgproc.drawContours(someRgba, contours, -1, new Scalar(255,0,0,255))
+
+        var picWithContours = new File(Environment.getExternalStorageDirectory(), "photoWithContours.jpg")
+
+        if (picWithContours.exists()) {
+          picWithContours.delete()
+        }
+
+        Highgui.imwrite(picWithContours.getPath(), someRgba)
+
 
         // val colorLabel = someRgba.submat(4, 68, 4, 68)
 
