@@ -25,7 +25,7 @@ class ColorBlobDetector extends NicerScalars with AutoLogTag {
   val upperBound = new Scalar(0)
 
   var colorRadius = new Scalar(25, 50, 50, 0)
-  
+
   val spectrum = new Mat
 
   val contours = new ArrayList[MatOfPoint]
@@ -59,7 +59,7 @@ class ColorBlobDetector extends NicerScalars with AutoLogTag {
       val tmp = Array((minH + j).toByte, 255.toByte, 255.toByte)
       spectrumHsv.put(0, j, tmp)
     }
-    Imgproc.cvtColor(spectrumHsv, spectrum, Imgproc.COLOR_HSV2RGB_FULL, 4) 
+    Imgproc.cvtColor(spectrumHsv, spectrum, Imgproc.COLOR_HSV2RGB_FULL, 4)
   }
 
   def getSpectrum: Mat = {
@@ -78,36 +78,36 @@ class ColorBlobDetector extends NicerScalars with AutoLogTag {
     Imgproc.cvtColor(pyrDownMat, hsvMat, Imgproc.COLOR_RGB2HSV_FULL)
 
     Core.inRange(hsvMat, lowerBound, upperBound, mask)
-    
+
     Imgproc.dilate(mask, dilatedMask, new Mat())
-    
+
     val foundContours = new ArrayList[MatOfPoint]()
-    
+
     Imgproc.findContours(dilatedMask, foundContours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
-    
+
     var maxArea = 0.0
     var each = foundContours.iterator()
-    
+
     while (each.hasNext) {
       val wrapper = each.next()
       val area = Imgproc.contourArea(wrapper)
       if (area > maxArea) maxArea = area
     }
-    
+
     val contoursAmount = contours.size()
     logE"Contours detected: $contoursAmount"()
 
     contours.clear()
-    
+
     each = foundContours.iterator()
     while (each.hasNext) {
       val contour = each.next()
 
       val contourArea = Imgproc.contourArea(contour)
-      
-      Log.e("ColorBlobDetector", "Contour area: $contourArea")
-      Log.e("ColorBlobDetector", "MinContour area: $minContourArea")
-      Log.e("ColorBlobDetector", "Max area: $maxArea")
+
+      Log.e("ColorBlobDetector", "Contour area: " + contourArea)
+      Log.e("ColorBlobDetector", "MinContour area: " + minContourArea)
+      Log.e("ColorBlobDetector", "Max area: " + maxArea)
 
       if (contourArea > minContourArea * maxArea) {
         Core.multiply(contour, new Scalar(4, 4), contour)

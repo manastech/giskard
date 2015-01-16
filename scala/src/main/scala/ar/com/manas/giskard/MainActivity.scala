@@ -92,10 +92,10 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
             drone ! Drone.Disconnect
           }
         },
-      w[Button] <~ text("Print NavData") <~
+        w[Button] <~ text("Take pic") <~
         On.click {
           Ui {
-            drone ! Drone.PrintNavData
+            camera ! Camera.SaveSnapshot
           }
         },
       w[Button] <~ text("Square") <~
@@ -117,10 +117,10 @@ class MainActivity extends FragmentActivity with Contexts[FragmentActivity] with
             riseAndHover ! RiseAndHover.Start
           }
         },
-      w[Button] <~ text("Take pic") <~
+      w[Button] <~ text("Print NavData") <~
         On.click {
           Ui {
-            camera ! Camera.SaveSnapshot
+            drone ! Drone.PrintNavData
           }
         }
     ) <~ vertical <~ gravityCenter

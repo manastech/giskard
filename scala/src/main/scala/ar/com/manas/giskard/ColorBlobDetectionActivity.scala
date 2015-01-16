@@ -187,7 +187,10 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
 
         Imgproc.cvtColor(touchedRegionRgba, touchedRegionHsv, Imgproc.COLOR_RGB2HSV_FULL)
 
+        logE"Touched HSV region: $touchedRegionHsv"()
+
         val bchsv = Core.sumElems(touchedRegionHsv)
+        logE"Touched HSV apenas inicializado: $bchsv"()
         blobColorHsv = Some(bchsv)
 
         val pointCount = touchedRect.width * touchedRect.height
@@ -199,7 +202,8 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
         val bcrgba = convertScalarHsv2Rgba(bchsv)
         blobColorRgba = Some(bcrgba)
 
-        logE"Touched rgba color: ($bcrgba.value[0], $bcrgba.value[1], $bcrgba.value[2], $bcrgba.value[3])"()
+        logE"Touched HSV color: $bchsv"()
+        logE"Touched rgba color: $bcrgba"()
 
         det.setHsvColor(bchsv)
 
@@ -243,7 +247,7 @@ class ColorBlobDetectionActivity extends FragmentActivity with Contexts[Fragment
       case _ =>
         logE"Unexpected status when receiving frame"()
 
-    }    
+    }
 
     someRgba
   }
